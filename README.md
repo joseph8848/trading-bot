@@ -1,5 +1,7 @@
 # Elite Smart Trading Bot
 
+[🚀 Run Locally](#quick-start) - *Run with `run.bat` or `gradlew.bat run`*
+
 A JavaFX desktop trading bot with intelligent currency scanning and smart time optimization.
 
 ## Features
