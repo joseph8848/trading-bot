@@ -1,0 +1,9 @@
+[
+  {"time":"2025-12-26T21:29:58.994002500","currency":"GBP/USD","direction":"PUT","result":"LOST","confidence":85.0,"duration":5},
+  {"time":"2025-12-26T21:18:14.768191900","currency":"NZD/USD","direction":"PUT","result":"LOST","confidence":85.0,"duration":5},
+  {"time":"2025-12-26T21:12:49.983407300","currency":"EUR/GBP","direction":"PUT","result":"LOST","confidence":85.0,"duration":5},
+  {"time":"2025-12-26T21:07:15.520588500","currency":"GBP/USD","direction":"PUT","result":"WON","confidence":85.0,"duration":5},
+  {"time":"2025-12-26T20:59:51.254898400","currency":"AUD/USD","direction":"CALL","result":"LOST","confidence":85.0,"duration":5},
+  {"time":"2025-12-26T20:52:52.325659200","currency":"USD/JPY","direction":"PUT","result":"WON","confidence":85.0,"duration":5},
+  {"time":"2025-12-26T20:38:22.327200","currency":"AUD/USD","direction":"PUT","result":"WON","confidence":85.0,"duration":5}
+]

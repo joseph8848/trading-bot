@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Elite Trading Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 320px;
+            min-height: 200px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #00ff88;
+        }
+
+        .status-dot.disconnected {
+            background: #ff4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .last-signal {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .last-signal h3 {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .signal-info {
+            font-size: 14px;
+        }
+
+        .signal-call {
+            color: #00ff88;
+        }
+
+        .signal-put {
+            color: #ff4444;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-reconnect {
+            background: #0066ff;
+            color: white;
+        }
+
+        .btn-reconnect:hover {
+            background: #0055dd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🤖 Elite Trading Bot</h1>
+        <small>Pocket Option Connector</small>
+    </div>
+
+    <div class="status" id="status">
+        <div class="status-dot disconnected" id="statusDot"></div>
+        <span id="statusText">Connecting to bot...</span>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value" id="tradesCount">0</div>
+            <div class="stat-label">Trades Executed</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="balance">$0</div>
+            <div class="stat-label">Balance</div>
+        </div>
+    </div>
+
+    <div class="last-signal">
+        <h3>LAST SIGNAL</h3>
+        <div class="signal-info" id="lastSignal">Waiting for signals...</div>
+    </div>
+
+    <button class="btn btn-reconnect" id="reconnectBtn">🔄 Reconnect</button>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

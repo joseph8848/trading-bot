@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elite Trading Bot — Signal Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e17;--surface:#111827;--card:#1a2332;--border:#1e2d3d;
+  --text:#e2e8f0;--muted:#64748b;--accent:#3b82f6;
+  --green:#10b981;--red:#ef4444;--yellow:#f59e0b;--purple:#8b5cf6;
+  --glow-green:0 0 20px rgba(16,185,129,.3);--glow-red:0 0 20px rgba(239,68,68,.3);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:1400px;margin:0 auto;padding:16px}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:16px}
+.header h1{font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .status{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.header-stats{display:flex;gap:16px;font-size:.8rem}
+.header-stats span{color:var(--muted)}
+.header-stats strong{color:var(--text)}
+
+/* Active Signal Banner */
+.active-signal{display:none;padding:20px 24px;border-radius:16px;margin-bottom:16px;animation:slideIn .3s ease}
+.active-signal.buy{background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(16,185,129,.05));border:2px solid var(--green);box-shadow:var(--glow-green)}
+.active-signal.sell{background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(239,68,68,.05));border:2px solid var(--red);box-shadow:var(--glow-red)}
+.active-signal .signal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.active-signal .signal-dir{font-size:2rem;font-weight:800;letter-spacing:2px}
+.active-signal.buy .signal-dir{color:var(--green)}
+.active-signal.sell .signal-dir{color:var(--red)}
+.active-signal .signal-pair{font-size:1.1rem;font-weight:600;color:var(--text)}
+.active-signal .signal-conf{font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono'}
+.active-signal .signal-meta{display:flex;gap:24px;font-size:.85rem;color:var(--muted)}
+.freshness{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono';font-weight:600}
+.freshness.fresh{color:var(--green)}
+.freshness.stale{color:var(--yellow)}
+.freshness.expired{color:var(--red)}
+.record-btn{padding:10px 24px;border:none;border-radius:10px;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s}
+.record-btn.buy{background:var(--green);color:#fff}
+.record-btn.sell{background:var(--red);color:#fff}
+.record-btn:hover{transform:scale(1.05);filter:brightness(1.2)}
+.record-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .3s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card.tradeable{border-color:var(--green);box-shadow:var(--glow-green)}
+.card.tradeable.sell-signal{border-color:var(--red);box-shadow:var(--glow-red)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.pair-name{font-weight:700;font-size:1rem}
+.signal-badge{padding:4px 10px;border-radius:8px;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:1px}
+.signal-badge.call,.signal-badge.buy{background:rgba(16,185,129,.15);color:var(--green)}
+.signal-badge.put,.signal-badge.sell{background:rgba(239,68,68,.15);color:var(--red)}
+.signal-badge.wait{background:rgba(100,116,139,.15);color:var(--muted)}
+.signal-badge.no_data{background:rgba(100,116,139,.1);color:#475569}
+.conf-bar{height:6px;background:var(--border);border-radius:3px;margin:8px 0;overflow:hidden}
+.conf-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.conf-fill.high{background:linear-gradient(90deg,var(--green),#34d399)}
+.conf-fill.medium{background:linear-gradient(90deg,var(--yellow),#fbbf24)}
+.conf-fill.low{background:linear-gradient(90deg,var(--red),#f87171)}
+.card-details{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}
+.card-price{font-family:'JetBrains Mono';font-size:.8rem;color:var(--text);margin-top:6px}
+.card-trend{font-size:.7rem;padding:2px 6px;border-radius:4px;background:rgba(59,130,246,.1);color:var(--accent)}
+.card .warnings{margin-top:8px;font-size:.7rem;color:var(--yellow)}
+
+/* Stats Panel */
+.stats-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.stats-panel h2{font-size:1rem;font-weight:700;margin-bottom:12px;color:var(--purple)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.stat-item{text-align:center;padding:12px;background:var(--card);border-radius:10px}
+.stat-value{font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono'}
+.stat-label{font-size:.7rem;color:var(--muted);margin-top:4px}
+.stat-value.green{color:var(--green)}
+.stat-value.red{color:var(--red)}
+.stat-value.blue{color:var(--accent)}
+
+/* Pending Trades */
+.pending-list{margin-top:12px}
+.pending-trade{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card);border-radius:8px;margin-bottom:6px;font-size:.8rem;border-left:3px solid var(--yellow)}
+.pending-trade .countdown{font-family:'JetBrains Mono';font-weight:600;color:var(--yellow)}
+
+/* Footer */
+.footer{text-align:center;padding:16px;color:var(--muted);font-size:.75rem}
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>🤖 Elite Signal Dashboard</h1>
+      <div class="status"><div class="status-dot" id="statusDot"></div><span id="statusText">Connecting...</span></div>
+    </div>
+    <div class="header-stats">
+      <span>Pairs: <strong id="activePairs">0</strong></span>
+      <span>Pending: <strong id="pendingCount">0</strong></span>
+      <span>Updated: <strong id="lastUpdate">—</strong></span>
+    </div>
+  </div>
+
+  <!-- Active Signal Banner (appears when high-confidence signal fires) -->
+  <div class="active-signal" id="activeSignal">
+    <div class="signal-header">
+      <div>
+        <div class="signal-pair" id="asPair">EUR/USD</div>
+        <div class="signal-dir" id="asDir">▲ BUY</div>
+      </div>
+      <div style="text-align:right">
+        <div class="signal-conf" id="asConf">94.2%</div>
+        <div class="freshness fresh" id="asFresh">⏱ Valid: 15s</div>
+      </div>
+    </div>
+    <div class="signal-meta">
+      <span id="asPrice">Price: 1.08523</span>
+      <span id="asTrend">Trend: UPTREND</span>
+      <span id="asRsi">RSI: 32.1</span>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
+      <button class="record-btn buy" id="recordBtn" onclick="recordTrade()">✅ I Placed This Trade — Track Outcome</button>
+      <select id="expirySelect" style="padding:8px 12px;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border);font-size:.85rem">
+        <option value="60">1 min</option>
+        <option value="120">2 min</option>
+        <option value="300" selected>5 min</option>
+        <option value="600">10 min</option>
+        <option value="900">15 min</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Signal Grid -->
+  <div class="grid" id="signalGrid">
+    <div class="card"><div class="card-header"><span class="pair-name">Loading...</span></div></div>
+  </div>
+
+  <!-- Learning Stats -->
+  <div class="stats-panel">
+    <h2>📊 Auto-Learning Stats</h2>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-item"><div class="stat-value blue" id="statTotal">0</div><div class="stat-label">Total Tracked</div></div>
+      <div class="stat-item"><div class="stat-value green" id="statWins">0</div><div class="stat-label">Wins</div></div>
+      <div class="stat-item"><div class="stat-value red" id="statLosses">0</div><div class="stat-label">Losses</div></div>
+      <div class="stat-item"><div class="stat-value" id="statWinRate">—</div><div class="stat-label">Win Rate</div></div>
+      <div class="stat-item"><div class="stat-value" id="statPending">0</div><div class="stat-label">Pending</div></div>
+    </div>
+    <div class="pending-list" id="pendingList"></div>
+  </div>
+
+  <div class="footer">Elite Smart Trading Bot v2.0 — Signal Dashboard • Auto-Learning Enabled</div>
+</div>
+
+<!-- Audio alerts -->
+<script>
+const API = window.location.origin;
+let lastAlertSignal = null;
+let activeSignalTime = 0;
+let freshInterval = null;
+const alertSound = new AudioContext();
+
+function beep(freq, dur, type='sine') {
+  const osc = alertSound.createOscillator();
+  const gain = alertSound.createGain();
+  osc.connect(gain); gain.connect(alertSound.destination);
+  osc.frequency.value = freq; osc.type = type;
+  gain.gain.setValueAtTime(0.3, alertSound.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, alertSound.currentTime + dur);
+  osc.start(); osc.stop(alertSound.currentTime + dur);
+}
+
+function playBuyAlert() { beep(880, 0.15); setTimeout(()=>beep(1100, 0.15), 180); setTimeout(()=>beep(1320, 0.25), 360); }
+function playSellAlert() { beep(660, 0.15); setTimeout(()=>beep(520, 0.15), 180); setTimeout(()=>beep(440, 0.25), 360); }
+
+function renderSignals(signals) {
+  const grid = document.getElementById('signalGrid');
+  let activePairs = 0;
+  let bestSignal = null;
+
+  let html = '';
+  for (const s of signals) {
+    if (s.has_data) activePairs++;
+    const dir = (s.signal || 'WAIT').toUpperCase();
+    const conf = s.confidence || 0;
+    const isTradeable = s.can_trade && dir !== 'WAIT';
+    const isSell = dir === 'PUT' || dir === 'SELL';
+
+    let confClass = conf >= 88 ? 'high' : conf >= 70 ? 'medium' : 'low';
+    let badgeClass = dir === 'CALL' || dir === 'BUY' ? 'buy' : dir === 'PUT' || dir === 'SELL' ? 'sell' : s.has_data ? 'wait' : 'no_data';
+    let cardClass = isTradeable ? (isSell ? 'card tradeable sell-signal' : 'card tradeable') : 'card';
+    let dirLabel = dir === 'CALL' ? '▲ BUY' : dir === 'PUT' ? '▼ SELL' : dir === 'BUY' ? '▲ BUY' : dir === 'SELL' ? '▼ SELL' : 'WAIT';
+
+    if (isTradeable && (!bestSignal || conf > bestSignal.confidence)) {
+      bestSignal = s;
+    }
+
+    let warningsHtml = '';
+    if (s.warnings && s.warnings.length) {
+      warningsHtml = '<div class="warnings">' + s.warnings.slice(0,2).join(' • ') + '</div>';
+    }
+    if (!s.can_trade && s.reasons && s.reasons.length) {
+      warningsHtml += '<div class="warnings" style="color:var(--red)">' + s.reasons[0] + '</div>';
+    }
+
+    html += `<div class="${cardClass}" onclick="selectSignal('${s.currency}','${dir}',${conf})">
+      <div class="card-header">
+        <span class="pair-name">${s.currency}</span>
+        <span class="signal-badge ${badgeClass}">${dirLabel}</span>
+      </div>
+      <div class="conf-bar"><div class="conf-fill ${confClass}" style="width:${conf}%"></div></div>
+      <div class="card-details">
+        <span>Conf: ${conf}%</span>
+        <span class="card-trend">${s.trend || '—'}</span>
+        ${s.rsi ? `<span>RSI: ${s.rsi}</span>` : ''}
+      </div>
+      ${s.current_price ? `<div class="card-price">${parseFloat(s.current_price).toFixed(5)}</div>` : ''}
+      ${warningsHtml}
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+  document.getElementById('activePairs').textContent = activePairs;
+
+  // Show active signal banner for best tradeable signal
+  if (bestSignal && bestSignal.can_trade) {
+    showActiveSignal(bestSignal);
+  } else {
+    document.getElementById('activeSignal').style.display = 'none';
+  }
+}
+
+function showActiveSignal(s) {
+  const el = document.getElementById('activeSignal');
+  const dir = s.signal.toUpperCase();
+  const isBuy = dir === 'CALL' || dir === 'BUY';
+  const dirLabel = isBuy ? '▲ BUY' : '▼ SELL';
+
+  el.className = 'active-signal ' + (isBuy ? 'buy' : 'sell');
+  el.style.display = 'block';
+  document.getElementById('asPair').textContent = s.currency;
+  document.getElementById('asDir').textContent = dirLabel;
+  document.getElementById('asConf').textContent = s.confidence + '%';
+  document.getElementById('asPrice').textContent = 'Price: ' + (s.current_price ? parseFloat(s.current_price).toFixed(5) : '—');
+  document.getElementById('asTrend').textContent = 'Trend: ' + (s.trend || '—');
+  document.getElementById('asRsi').textContent = 'RSI: ' + (s.rsi || '—');
+
+  const btn = document.getElementById('recordBtn');
+  btn.className = 'record-btn ' + (isBuy ? 'buy' : 'sell');
+  btn.dataset.currency = s.currency;
+  btn.dataset.direction = isBuy ? 'BUY' : 'SELL';
+  btn.dataset.confidence = s.confidence;
+
+  // Play alert if this is a new signal
+  const sigKey = s.currency + dir;
+  if (sigKey !== lastAlertSignal) {
+    lastAlertSignal = sigKey;
+    activeSignalTime = Date.now();
+    if (isBuy) playBuyAlert(); else playSellAlert();
+  }
+  
+  // Set the AI-recommended expiry time automatically
+  const expirySelect = document.getElementById('expirySelect');
+  const optimal = s.optimal_expiry || 300;
+  // If the exact optimal value exists in dropdown, select it. If not, fallback to 300 (5 min).
+  if ([60, 120, 180, 300, 420, 600, 900].includes(optimal)) {
+      if (!Array.from(expirySelect.options).some(opt => parseInt(opt.value) === optimal)) {
+          // Add the option if it doesn't exist
+          const newOpt = new Option(`${optimal/60} min (AI Recommended)`, optimal);
+          expirySelect.add(newOpt);
+      }
+      expirySelect.value = optimal;
+  } else {
+      expirySelect.value = 300;
+  }
+
+  // Update freshness timer
+  if (freshInterval) clearInterval(freshInterval);
+  freshInterval = setInterval(() => {
+    const age = Math.floor((Date.now() - activeSignalTime) / 1000);
+    const remaining = 15 - age;
+    const freshEl = document.getElementById('asFresh');
+    if (remaining > 10) { freshEl.textContent = '⏱ Valid: ' + remaining + 's'; freshEl.className = 'freshness fresh'; }
+    else if (remaining > 0) { freshEl.textContent = '⏱ Hurry: ' + remaining + 's'; freshEl.className = 'freshness stale'; }
+    else { freshEl.textContent = '⏱ Stale — wait for refresh'; freshEl.className = 'freshness expired'; }
+  }, 1000);
+}
+
+function selectSignal(currency, dir, conf) {
+  // Click on a card to set it as active (for manual record)
+  const btn = document.getElementById('recordBtn');
+  btn.dataset.currency = currency;
+  btn.dataset.direction = dir.includes('BUY') || dir === 'CALL' ? 'BUY' : 'SELL';
+  btn.dataset.confidence = conf;
+}
+
+async function recordTrade() {
+  const btn = document.getElementById('recordBtn');
+  const currency = btn.dataset.currency;
+  const direction = btn.dataset.direction;
+  const confidence = parseFloat(btn.dataset.confidence || 0);
+  const expiry = parseInt(document.getElementById('expirySelect').value);
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Recording...';
+
+  try {
+    const res = await fetch(API + '/dashboard/record-trade', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ currency, direction, expiry_seconds: expiry, confidence, source: 'dashboard' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.textContent = '✅ Tracked! Outcome in ' + expiry + 's';
+      beep(1200, 0.1);
+      setTimeout(() => { btn.disabled = false; btn.textContent = '✅ I Placed This Trade — Track Outcome'; }, 3000);
+      fetchStats();
+    } else {
+      btn.textContent = '❌ ' + (data.error || 'Failed');
+      setTimeout(() => { btn.disabled = false; btn.textContent = '✅ I Placed This Trade — Track Outcome'; }, 2000);
+    }
+  } catch (e) {
+    btn.textContent = '❌ Network error';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '✅ I Placed This Trade — Track Outcome'; }, 2000);
+  }
+}
+
+async function fetchSignals() {
+  try {
+    const res = await fetch(API + '/dashboard/signals');
+    const data = await res.json();
+    if (data.success) {
+      renderSignals(data.signals);
+      document.getElementById('pendingCount').textContent = data.pending_trades || 0;
+      document.getElementById('statusDot').style.background = 'var(--green)';
+      document.getElementById('statusText').textContent = 'Live — Auto-refresh 5s';
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+    }
+  } catch (e) {
+    document.getElementById('statusDot').style.background = 'var(--red)';
+    document.getElementById('statusText').textContent = 'Disconnected — retrying...';
+  }
+}
+
+async function fetchStats() {
+  try {
+    const res = await fetch(API + '/dashboard/learning-stats');
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('statTotal').textContent = data.total_tracked || 0;
+      document.getElementById('statWins').textContent = data.wins || 0;
+      document.getElementById('statLosses').textContent = data.losses || 0;
+      document.getElementById('statWinRate').textContent = data.win_rate || '—';
+      document.getElementById('statPending').textContent = data.pending || 0;
+
+      const wr = parseFloat(data.win_rate);
+      const wrEl = document.getElementById('statWinRate');
+      if (!isNaN(wr)) { wrEl.className = 'stat-value ' + (wr >= 55 ? 'green' : wr >= 45 ? 'blue' : 'red'); }
+
+      // Render pending trades
+      const pendingHtml = (data.recent_trades || []).slice(-5).reverse().map(t => {
+        const icon = t.status === 'WON' ? '✅' : t.status === 'LOST' ? '❌' : '⏳';
+        return `<div class="pending-trade"><span>${icon} ${t.currency} ${t.direction} @ ${parseFloat(t.entry_price||0).toFixed(5)}</span><span>${t.status}</span></div>`;
+      }).join('');
+      document.getElementById('pendingList').innerHTML = pendingHtml;
+    }
+  } catch (e) {}
+}
+
+// Start polling
+fetchSignals();
+fetchStats();
+setInterval(fetchSignals, 5000);
+setInterval(fetchStats, 15000);
+
+// Resume AudioContext on first click (browser policy)
+document.addEventListener('click', () => { if (alertSound.state === 'suspended') alertSound.resume(); }, { once: true });
+</script>
+</body>
+</html>

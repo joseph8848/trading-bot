@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Signal Queue - Trading Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e14;
+            --bg-card: #131920;
+            --bg-card-hover: #1a2129;
+            --border-color: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #718096;
+            --accent-green: #48bb78;
+            --accent-red: #f56565;
+            --accent-blue: #4299e1;
+            --accent-gold: #ecc94b;
+            --accent-purple: #9f7aea;
+            --gradient-call: linear-gradient(135deg, #48bb78, #38a169);
+            --gradient-put: linear-gradient(135deg, #f56565, #e53e3e);
+            --glow-green: 0 0 20px rgba(72, 187, 120, 0.4);
+            --glow-red: 0 0 20px rgba(245, 101, 101, 0.4);
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.4);
+            }
+
+            50% {
+                opacity: 0.8;
+                box-shadow: 0 0 10px 5px rgba(72, 187, 120, 0.2);
+            }
+        }
+
+        /* Data Source Indicator */
+        .data-source-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .data-source-badge.real {
+            background: linear-gradient(135deg, #48bb78, #2f855a);
+            color: white;
+            box-shadow: 0 0 15px rgba(72, 187, 120, 0.4);
+            animation: realDataGlow 2s infinite;
+        }
+
+        .data-source-badge.simulated {
+            background: linear-gradient(135deg, #ecc94b, #d69e2e);
+            color: #1a1a1a;
+        }
+
+        .data-source-badge.api-only {
+            background: linear-gradient(135deg, #4299e1, #2b6cb0);
+            color: white;
+        }
+
+        .data-source-badge.broker-only {
+            background: linear-gradient(135deg, #9f7aea, #6b46c1);
+            color: white;
+        }
+
+        @keyframes realDataGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(72, 187, 120, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 25px rgba(72, 187, 120, 0.6);
+            }
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Current Signal Card - The Star of the Show */
+        .current-signal-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 2px solid var(--border-color);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .current-signal-card.call {
+            border-color: var(--accent-green);
+            box-shadow: var(--glow-green);
+        }
+
+        .current-signal-card.put {
+            border-color: var(--accent-red);
+            box-shadow: var(--glow-red);
+        }
+
+        .current-signal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-blue);
+        }
+
+        .current-signal-card.call::before {
+            background: var(--gradient-call);
+        }
+
+        .current-signal-card.put::before {
+            background: var(--gradient-put);
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .signal-badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            background: rgba(66, 153, 225, 0.2);
+            border: 1px solid var(--accent-blue);
+            border-radius: 20px;
+            color: var(--accent-blue);
+        }
+
+        .queue-count {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Timer Display */
+        .timer-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .countdown-timer {
+            font-size: 80px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            background: linear-gradient(180deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .countdown-timer.urgent {
+            background: linear-gradient(180deg, var(--accent-red), #c53030);
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: urgentPulse 0.5s ease infinite;
+        }
+
+        @keyframes urgentPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.03);
+            }
+        }
+
+        .timer-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Signal Details */
+        .signal-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .detail-box {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .detail-value {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .detail-value.currency {
+            color: var(--accent-blue);
+        }
+
+        .detail-value.call {
+            color: var(--accent-green);
+        }
+
+        .detail-value.put {
+            color: var(--accent-red);
+        }
+
+        .detail-value.amount {
+            color: var(--accent-gold);
+        }
+
+        .detail-value.duration {
+            color: var(--accent-purple);
+        }
+
+        /* Direction Display */
+        .direction-display {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .direction-arrow {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .direction-text {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 4px;
+        }
+
+        .direction-text.call {
+            color: var(--accent-green);
+        }
+
+        .direction-text.put {
+            color: var(--accent-red);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 18px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-executed {
+            background: var(--gradient-call);
+            color: white;
+        }
+
+        .btn-executed:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-skip {
+            background: rgba(113, 128, 150, 0.3);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-skip:hover {
+            background: rgba(245, 101, 101, 0.2);
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Waiting State */
+        .waiting-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .waiting-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .waiting-text {
+            font-size: 24px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .waiting-subtext {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Side Panel */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Queue List */
+        .queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 10px;
+            border-left: 3px solid var(--border-color);
+        }
+
+        .queue-item.call {
+            border-left-color: var(--accent-green);
+        }
+
+        .queue-item.put {
+            border-left-color: var(--accent-red);
+        }
+
+        .queue-position {
+            width: 24px;
+            height: 24px;
+            background: var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .queue-info {
+            flex: 1;
+        }
+
+        .queue-currency {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .queue-confidence {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .queue-direction {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .queue-direction.call {
+            color: var(--accent-green);
+        }
+
+        .queue-direction.put {
+            color: var(--accent-red);
+        }
+
+        .queue-empty {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: var(--bg-dark);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-value.green {
+            color: var(--accent-green);
+        }
+
+        .stat-value.red {
+            color: var(--accent-red);
+        }
+
+        .stat-value.gold {
+            color: var(--accent-gold);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Controls */
+        .control-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .control-btn.active {
+            background: rgba(66, 153, 225, 0.2);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .control-btn.paused {
+            background: rgba(236, 201, 75, 0.2);
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        /* Break State */
+        .break-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 20, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .break-icon {
+            font-size: 80px;
+            margin-bottom: 30px;
+        }
+
+        .break-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--accent-gold);
+        }
+
+        .break-timer {
+            font-size: 60px;
+            font-family: 'Consolas', monospace;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .break-text {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+
+        .break-btn {
+            padding: 15px 40px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-blue);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: slideIn 0.4s ease;
+            font-size: 14px;
+        }
+
+        .notification.success {
+            border-left-color: var(--accent-green);
+        }
+
+        .notification.error {
+            border-left-color: var(--accent-red);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">⚡ SIGNAL QUEUE</div>
+        <div class="status-bar">
+            <div class="data-source-badge simulated" id="dataSourceBadge">
+                <span id="dataSourceIcon">📊</span>
+                <span id="dataSourceText">CHECKING...</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="apiDot"></div>
+                <span>API</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="scannerDot"></div>
+                <span id="scannerStatus">Scanner</span>
+            </div>
+            <div class="status-item">
+                <span id="timeDisplay">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Current Signal Card -->
+        <div class="current-signal-card" id="signalCard">
+            <!-- Waiting State (shown when no signals) -->
+            <div class="waiting-state" id="waitingState">
+                <div class="waiting-icon">🔍</div>
+                <div class="waiting-text">Scanning for Signals...</div>
+                <div class="waiting-subtext">The bot is analyzing the market. Signals will appear here.</div>
+            </div>
+
+            <!-- Active Signal (hidden initially) -->
+            <div id="activeSignal" class="hidden">
+                <div class="signal-header">
+                    <div class="signal-badge" id="signalBadge">SIGNAL #1</div>
+                    <div class="queue-count" id="queueCountLabel">0 in queue</div>
+                </div>
+
+                <div class="timer-section">
+                    <div class="countdown-timer" id="countdownTimer">30</div>
+                    <div class="timer-label">seconds to execute</div>
+                </div>
+
+                <div class="direction-display">
+                    <div class="direction-arrow" id="directionArrow">↑</div>
+                    <div class="direction-text" id="directionText">CALL</div>
+                </div>
+
+                <div class="signal-details">
+                    <div class="detail-box">
+                        <div class="detail-label">Currency</div>
+                        <div class="detail-value currency" id="signalCurrency">EUR/USD</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Direction</div>
+                        <div class="detail-value call" id="signalDirection">CALL</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Amount</div>
+                        <div class="detail-value amount" id="signalAmount">$10</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">Duration</div>
+                        <div class="detail-value duration" id="signalDuration">3 min</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-executed" id="executedBtn" onclick="markExecuted()">
+                        ✅ EXECUTED
+                    </button>
+                    <button class="btn btn-skip" id="skipBtn" onclick="skipSignal()">
+                        ⏭ SKIP
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <!-- Queue -->
+            <div class="card">
+                <div class="card-title">📋 Next in Queue</div>
+                <div class="queue-list" id="queueList">
+                    <div class="queue-empty">Queue is empty</div>
+                </div>
+            </div>
+
+            <!-- Session Stats -->
+            <div class="card">
+                <div class="card-title">📊 Session Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value green" id="executedCount">0</div>
+                        <div class="stat-label">Executed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value red" id="skippedCount">0</div>
+                        <div class="stat-label">Skipped</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value gold" id="batchCount">0/5</div>
+                        <div class="stat-label">Batch</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="confidenceAvg">--%</div>
+                        <div class="stat-label">Avg Confidence</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="card">
+                <div class="card-title">⚙️ Controls</div>
+                <div class="control-row" style="margin-bottom: 10px;">
+                    <button class="control-btn active" id="pauseBtn" onclick="togglePause()">
+                        ▶ RUNNING
+                    </button>
+                    <button class="control-btn" id="soundBtn" onclick="toggleSound()">
+                        🔊 SOUND ON
+                    </button>
+                </div>
+                <div class="control-row">
+                    <button class="control-btn" id="breakBtn" onclick="takeBreak()">
+                        ☕ TAKE BREAK
+                    </button>
+                    <button class="control-btn" id="resetBtn" onclick="resetSession()">
+                        🔄 RESET
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="card">
+                <div class="card-title">⏱️ Timing</div>
+                <div class="control-row">
+                    <div style="flex: 1;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 5px;">Countdown</div>
+                        <select id="countdownSetting"
+                            style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="30">30 sec</option>
+                            <option value="60">1 min</option>
+                            <option value="90" selected>90 sec</option>
+                            <option value="120">2 min</option>
+                            <option value="180">3 min</option>
+                            <option value="300">5 min</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 5px;">Break Duration
+                        </div>
+                        <select id="breakDurationSetting"
+                            style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="180">3 min</option>
+                            <option value="300" selected>5 min</option>
+                            <option value="600">10 min</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Break Overlay -->
+    <div class="break-overlay hidden" id="breakOverlay">
+        <div class="break-icon">☕</div>
+        <div class="break-title">Taking a Break</div>
+        <div class="break-timer" id="breakTimer">5:00</div>
+        <div class="break-text">Completed 5 trades! Rest before the next batch.</div>
+        <button class="break-btn" onclick="endBreak()">Resume Now →</button>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5001';
+
+        // State
+        let signalQueue = [];
+        let currentSignal = null;
+        let countdownInterval = null;
+        let countdownValue = 30;
+        let isPaused = false;
+        let soundEnabled = true;
+        let isOnBreak = false;
+        let breakInterval = null;
+
+        // Session stats
+        let executedCount = 0;
+        let skippedCount = 0;
+        let batchCount = 0;
+        let confidences = [];
+
+        // Audio context for alerts
+        let audioContext = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAPIConnection();
+            checkDataSource();  // Check data source status
+            updateTimeDisplay();
+            setInterval(updateTimeDisplay, 1000);
+            setInterval(fetchSignals, 5000);
+            setInterval(checkDataSource, 10000);  // Check data source every 10s
+        });
+
+        function updateTimeDisplay() {
+            document.getElementById('timeDisplay').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Check data source status (real vs simulated)
+        async function checkDataSource() {
+            const badge = document.getElementById('dataSourceBadge');
+            const icon = document.getElementById('dataSourceIcon');
+            const text = document.getElementById('dataSourceText');
+
+            try {
+                const response = await fetch(`${API_URL}/broker/prices`);
+                if (!response.ok) {
+                    throw new Error('Endpoint not available');
+                }
+
+                const data = await response.json();
+                const prices = data.prices || {};
+                const hasBrokerData = Object.keys(prices).length > 0;
+
+                // Check if any prices are recent (less than 15 seconds old)
+                let hasRecentData = false;
+                for (const currency in prices) {
+                    if (prices[currency].age_seconds < 15) {
+                        hasRecentData = true;
+                        break;
+                    }
+                }
+
+                // Update badge based on data source
+                badge.className = 'data-source-badge';
+
+                if (hasRecentData) {
+                    // Real broker data available
+                    badge.classList.add('real');
+                    icon.textContent = '📡';
+                    text.textContent = 'REAL DATA';
+                } else if (hasBrokerData) {
+                    // Broker data exists but stale
+                    badge.classList.add('broker-only');
+                    icon.textContent = '📊';
+                    text.textContent = 'BROKER (STALE)';
+                } else {
+                    // No broker data - check if we're using Alpha Vantage
+                    // For now, show as simulated with fallback
+                    badge.classList.add('simulated');
+                    icon.textContent = '🔄';
+                    text.textContent = 'SIMULATED';
+                }
+            } catch (error) {
+                // API not available or endpoint doesn't exist
+                badge.className = 'data-source-badge simulated';
+                icon.textContent = '⚠️';
+                text.textContent = 'SIMULATED';
+            }
+        }
+
+        async function checkAPIConnection() {
+            try {
+                const response = await fetch(`${API_URL}/`);
+                if (response.ok) {
+                    document.getElementById('apiDot').classList.add('connected');
+                    document.getElementById('scannerDot').classList.add('connected');
+                    document.getElementById('scannerStatus').textContent = 'Scanning';
+                    showNotification('🟢 Connected to trading server', 'success');
+                    fetchSignals();
+                }
+            } catch (error) {
+                document.getElementById('apiDot').classList.remove('connected');
+                showNotification('🔴 API not connected - start api_server.py', 'error');
+            }
+        }
+
+        async function fetchSignals() {
+            if (isPaused || isOnBreak) return;
+            if (signalQueue.length >= 5) return; // Queue full
+
+            try {
+                const response = await fetch(`${API_URL}/signal-queue`);
+                const data = await response.json();
+
+                if (data.signals && data.signals.length > 0) {
+                    // Add new signals to queue (avoid duplicates)
+                    data.signals.forEach(sig => {
+                        const exists = signalQueue.some(q =>
+                            q.currency === sig.currency &&
+                            q.direction === sig.direction &&
+                            Date.now() - (q.timestamp || 0) < 30000
+                        );
+                        if (!exists && signalQueue.length < 5) {
+                            sig.timestamp = Date.now();
+                            signalQueue.push(sig);
+                        }
+                    });
+
+                    updateQueueDisplay();
+
+                    // If no current signal, show the first one
+                    if (!currentSignal && signalQueue.length > 0) {
+                        showNextSignal();
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching signals:', error);
+            }
+        }
+
+        function showNextSignal() {
+            if (signalQueue.length === 0) {
+                currentSignal = null;
+                document.getElementById('waitingState').classList.remove('hidden');
+                document.getElementById('activeSignal').classList.add('hidden');
+                document.getElementById('signalCard').className = 'current-signal-card';
+                return;
+            }
+
+            currentSignal = signalQueue.shift();
+            updateQueueDisplay();
+
+            const card = document.getElementById('signalCard');
+            const isCall = currentSignal.direction === 'CALL';
+
+            // Update UI
+            document.getElementById('waitingState').classList.add('hidden');
+            document.getElementById('activeSignal').classList.remove('hidden');
+
+            card.className = `current-signal-card ${isCall ? 'call' : 'put'}`;
+
+            document.getElementById('signalBadge').textContent = `SIGNAL #${executedCount + skippedCount + 1}`;
+            document.getElementById('queueCountLabel').textContent = `${signalQueue.length} in queue`;
+
+            document.getElementById('directionArrow').textContent = isCall ? '↑' : '↓';
+            document.getElementById('directionText').textContent = isCall ? 'CALL' : 'PUT';
+            document.getElementById('directionText').className = `direction-text ${isCall ? 'call' : 'put'}`;
+
+            document.getElementById('signalCurrency').textContent = currentSignal.currency;
+            document.getElementById('signalDirection').textContent = currentSignal.direction;
+            document.getElementById('signalDirection').className = `detail-value ${isCall ? 'call' : 'put'}`;
+            document.getElementById('signalAmount').textContent = `$${currentSignal.amount || 10}`;
+            document.getElementById('signalDuration').textContent = `${currentSignal.duration || 3} min`;
+
+            // Start countdown
+            startCountdown();
+
+            // Play sound
+            if (soundEnabled) playAlert();
+        }
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            countdownValue = parseInt(document.getElementById('countdownSetting').value);
+            document.querySelector('.timer-label').textContent = 'seconds to execute';
+            updateCountdownDisplay();
+
+            countdownInterval = setInterval(() => {
+                countdownValue--;
+                updateCountdownDisplay();
+
+                if (countdownValue <= 0) {
+                    clearInterval(countdownInterval);
+                    // In manual mode, just show timeout message but DON'T auto-skip
+                    // Signal stays on screen until user clicks EXECUTED or SKIP
+                    const timer = document.getElementById('countdownTimer');
+                    timer.textContent = '⏱️';
+                    timer.classList.add('urgent');
+                    document.querySelector('.timer-label').textContent = 'Timer expired - click EXECUTED or SKIP';
+                    if (soundEnabled) playBeep(500, 0.3);
+                }
+            }, 1000);
+        }
+
+        function updateCountdownDisplay() {
+            const timer = document.getElementById('countdownTimer');
+            timer.textContent = countdownValue;
+            timer.classList.toggle('urgent', countdownValue <= 10);
+
+            if (countdownValue <= 5 && soundEnabled) {
+                playBeep(countdownValue <= 3 ? 800 : 600);
+            }
+        }
+
+        function markExecuted() {
+            if (!currentSignal) return;
+
+            clearInterval(countdownInterval);
+            executedCount++;
+            batchCount++;
+            confidences.push(currentSignal.confidence || 75);
+
+            updateStats();
+            showNotification(`✅ Trade executed: ${currentSignal.currency} ${currentSignal.direction}`, 'success');
+
+            checkBatchLimit();
+        }
+
+        function skipSignal(timeout = false) {
+            if (!currentSignal) return;
+
+            clearInterval(countdownInterval);
+            skippedCount++;
+
+            updateStats();
+            if (timeout) {
+                showNotification(`⏰ Signal timed out: ${currentSignal.currency}`, 'error');
+            } else {
+                showNotification(`⏭ Signal skipped: ${currentSignal.currency}`, 'info');
+            }
+
+            showNextSignal();
+        }
+
+        function checkBatchLimit() {
+            if (batchCount >= 5) {
+                // Start break
+                startBreak();
+            } else {
+                showNextSignal();
+            }
+        }
+
+        function startBreak() {
+            isOnBreak = true;
+            document.getElementById('breakOverlay').classList.remove('hidden');
+
+            let breakSeconds = parseInt(document.getElementById('breakDurationSetting').value);
+            updateBreakTimer(breakSeconds);
+
+            breakInterval = setInterval(() => {
+                breakSeconds--;
+                updateBreakTimer(breakSeconds);
+
+                if (breakSeconds <= 0) {
+                    endBreak();
+                }
+            }, 1000);
+
+            if (soundEnabled) playBeep(400, 0.5);
+        }
+
+        function updateBreakTimer(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            document.getElementById('breakTimer').textContent =
+                `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function endBreak() {
+            clearInterval(breakInterval);
+            isOnBreak = false;
+            batchCount = 0;
+            document.getElementById('breakOverlay').classList.add('hidden');
+            updateStats();
+            showNotification('🚀 Break over! Ready for next batch.', 'success');
+            showNextSignal();
+        }
+
+        function updateQueueDisplay() {
+            const list = document.getElementById('queueList');
+
+            if (signalQueue.length === 0) {
+                list.innerHTML = '<div class="queue-empty">Queue is empty</div>';
+                return;
+            }
+
+            list.innerHTML = signalQueue.map((sig, i) => `
+                <div class="queue-item ${sig.direction.toLowerCase()}">
+                    <div class="queue-position">${i + 2}</div>
+                    <div class="queue-info">
+                        <div class="queue-currency">${sig.currency}</div>
+                        <div class="queue-confidence">${sig.confidence || 75}% confidence</div>
+                    </div>
+                    <div class="queue-direction ${sig.direction.toLowerCase()}">${sig.direction}</div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('executedCount').textContent = executedCount;
+            document.getElementById('skippedCount').textContent = skippedCount;
+            document.getElementById('batchCount').textContent = `${batchCount}/5`;
+
+            if (confidences.length > 0) {
+                const avg = confidences.reduce((a, b) => a + b, 0) / confidences.length;
+                document.getElementById('confidenceAvg').textContent = `${avg.toFixed(0)}%`;
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('pauseBtn');
+            btn.textContent = isPaused ? '⏸ PAUSED' : '▶ RUNNING';
+            btn.classList.toggle('active', !isPaused);
+            btn.classList.toggle('paused', isPaused);
+
+            if (isPaused) {
+                clearInterval(countdownInterval);
+                showNotification('⏸ Queue paused', 'info');
+            } else {
+                if (currentSignal) startCountdown();
+                showNotification('▶ Queue resumed', 'success');
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundBtn');
+            btn.textContent = soundEnabled ? '🔊 SOUND ON' : '🔇 SOUND OFF';
+            btn.classList.toggle('active', soundEnabled);
+        }
+
+        function takeBreak() {
+            if (!isOnBreak) {
+                startBreak();
+            }
+        }
+
+        function resetSession() {
+            if (confirm('Reset session stats?')) {
+                executedCount = 0;
+                skippedCount = 0;
+                batchCount = 0;
+                confidences = [];
+                signalQueue = [];
+                currentSignal = null;
+                clearInterval(countdownInterval);
+                updateStats();
+                updateQueueDisplay();
+                document.getElementById('waitingState').classList.remove('hidden');
+                document.getElementById('activeSignal').classList.add('hidden');
+                document.getElementById('signalCard').className = 'current-signal-card';
+                showNotification('🔄 Session reset', 'info');
+            }
+        }
+
+        function playAlert() {
+            playBeep(523, 0.2);
+            setTimeout(() => playBeep(659, 0.2), 150);
+            setTimeout(() => playBeep(784, 0.3), 300);
+        }
+
+        function playBeep(freq = 600, duration = 0.1) {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = freq;
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) { }
+        }
+
+        function showNotification(message, type = 'info') {
+            const n = document.createElement('div');
+            n.className = `notification ${type}`;
+            n.textContent = message;
+            document.body.appendChild(n);
+            setTimeout(() => n.remove(), 4000);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,20 @@
+# Elite Bot Learning Data - 2025-12-23
+totalTrades=1190
+totalWins=665
+minConfidence=85.0
+optimalConfidence=89.99999999999996
+currency=XAU/USD,88,42
+currency=BTC/USD,173,97
+currency=USD/JPY,124,66
+currency=ETH/USD,167,106
+currency=AUD/USD,76,38
+currency=GBP/USD,197,112
+currency=USD/CAD,87,45
+currency=OIL/USD,44,36
+currency=XAG/USD,27,10
+currency=EUR/USD,207,113
+bucket=80,86,23
+bucket=50,0,0
+bucket=70,153,62
+bucket=90,951,580
+bucket=60,0,0

@@ -1,0 +1,25 @@
+{
+  "consensus": {
+    "min_agreement": 0.6,
+    "weights": {
+      "fingpt": 0.40,
+      "python_ml": 0.35,
+      "java_brain": 0.25
+    },
+    "require_fingpt_agreement": true
+  },
+  "performance": {
+    "fingpt": {
+      "correct": 0,
+      "total": 0
+    },
+    "python_ml": {
+      "correct": 0,
+      "total": 0
+    },
+    "java_brain": {
+      "correct": 0,
+      "total": 0
+    }
+  }
+}
